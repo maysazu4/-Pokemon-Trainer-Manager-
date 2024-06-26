@@ -1,0 +1,131 @@
+services:
+  db:
+    image: mysql:8.0.4
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: Pokemons
+      MYSQL_USER: my_user
+      MYSQL_PASSWORD: 123
+      MYSQL_TCP_PORT: 3307
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - pokemonapi_default
+
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - pokemonapi_default
+
+
+  tables_service:
+    build: pokemon_api/tables_server
+    container_name: fastapi
+    command: ["uvicorn", "pokemon_api.tables_server.tables_server:server", "--host", "0.0.0.0", "--port", "5000"]
+    volumes:
+      - .:/app  # Mount the app directory to the container
+     
+    ports:
+      - "5000:5000"
+    networks:
+      - pokemonapi_default
+    depends_on:
+      - db
+
+
+  image_service:
+    build: pokemon_api/image_server
+    container_name: image_service
+    command: ["uvicorn", "pokemon_api.image_server.image_server:server", "--host", "0.0.0.0", "--port", "8001"]
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8001"
+    networks:
+      - pokemonapi_default
+    depends_on:
+      - mongo
+  
+  species_service:
+    build: pokemon_api/species_server
+    container_name: species_service
+    command: ["uvicorn", "pokemon_api.species_server.species_server:server", "--host", "0.0.0.0", "--port", "8002"]
+    volumes:
+      - .:/app
+    ports:
+      - "8002:8002"
+    networks:
+      - pokemonapi_default
+    depends_on:
+      - tables_service
+      - image_service
+
+
+  api_gateway:
+    build: pokemon_api/gateway_server
+    container_name: api_gateway
+    command: ["uvicorn", "pokemon_api.gateway_server.gateway_server:server", "--host", "0.0.0.0", "--port", "8000"]
+    volumes:
+      - .:/app  # Mount the app directory to the container
+    ports:
+      - "8000:8000"
+    networks:
+      - pokemonapi_default
+    depends_on:
+      - tables_service
+      - image_service
+      - species_service
+    
+
+volumes:
+  db_data:
+  mongo_data:
+
+networks:
+  pokemonapi_default:
+    driver: bridge
+
+
+# # version: '3.8'
+
+# # services:
+# #   db:
+# #     image: mysql:8.0.4
+# #     container_name: mysql
+# #     environment:
+# #       MYSQL_ROOT_PASSWORD: 123
+# #       MYSQL_DATABASE: Pokemons
+# #       MYSQL_USER: my_user
+# #       MYSQL_PASSWORD: 123
+# #     ports:
+# #       - "3307:3306"
+# #     volumes:
+# #       - db_data:/var/lib/mysql
+
+# #   mongo:
+# #     image: mongo:latest
+# #     container_name: mongo
+# #     ports:
+# #       - "27017:27017"
+# #     volumes:
+# #       - mongo_data:/data/db
+
+# # volumes:
+# #   db_data:
+# #   mongo_data:
+
+
+
+
+
+
+
